@@ -102,6 +102,76 @@
         .dark .notification-item:hover {
             background-color: rgba(93, 92, 222, 0.1);
         }
+        
+        .payment-option.selected {
+            border-color: #5D5CDE;
+            background-color: rgba(93, 92, 222, 0.1);
+        }
+        
+        .dark .payment-option.selected {
+            background-color: rgba(93, 92, 222, 0.2);
+        }
+        
+        .notification-appear {
+            animation: notificationAppear 0.5s ease-out forwards;
+        }
+        
+        @keyframes notificationAppear {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .notification-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            animation: toastAppear 0.3s ease-out forwards, toastDisappear 0.3s ease-in forwards 5s;
+        }
+        
+        @keyframes toastAppear {
+            from { transform: translate(-50%, -20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        @keyframes toastDisappear {
+            from { transform: translate(-50%, 0); opacity: 1; }
+            to { transform: translate(-50%, -20px); opacity: 0; }
+        }
+        
+        .category-tabs button.active {
+            background-color: #5D5CDE;
+            color: white;
+        }
+        
+        .dark .category-tabs button.active {
+            background-color: #5D5CDE;
+            color: white;
+        }
+        
+        .notification-badge {
+            transition: all 0.3s ease;
+        }
+        
+        .notification-badge.shake {
+            animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+            40%, 60% { transform: translate3d(3px, 0, 0); }
+        }
+        
+        .category-pill {
+            transition: all 0.2s ease;
+        }
+        
+        .category-pill:hover {
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body class="bg-light dark:bg-dark text-gray-800 dark:text-gray-200 min-h-screen">
@@ -197,6 +267,22 @@
         
         <!-- Dashboard screen (hidden initially) -->
         <div id="dashboard-screen" class="hidden">
+            <!-- Notification Toast -->
+            <div id="notification-toast" class="notification-toast bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 max-w-md w-full hidden">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white">
+                        <i id="toast-icon" class="fas fa-bell"></i>
+                    </div>
+                    <div class="mr-3 flex-1">
+                        <h4 id="toast-title" class="font-semibold text-gray-800 dark:text-gray-200"></h4>
+                        <p id="toast-message" class="text-sm text-gray-600 dark:text-gray-400"></p>
+                    </div>
+                    <button class="close-toast text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
             <!-- Header -->
             <header class="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10">
                 <div class="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -222,20 +308,37 @@
                         <div class="relative">
                             <button id="notifications-button" class="relative text-gray-600 dark:text-gray-300 hover:text-primary">
                                 <i class="fas fa-bell text-xl"></i>
-                                <span class="absolute -top-1 -right-1 bg-accent text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">3</span>
+                                <span id="notification-badge" class="notification-badge absolute -top-1 -right-1 bg-accent text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">3</span>
                                 <span class="notification-dot"></span>
                             </button>
                             
                             <!-- Notifications Panel -->
-                            <div id="notifications-panel" class="hidden absolute left-0 right-0 md:left-auto md:right-0 md:w-80 mt-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden z-20 max-h-[70vh] overflow-y-auto">
-                                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800">
+                            <div id="notifications-panel" class="hidden absolute left-0 right-0 md:left-auto md:right-0 md:w-96 mt-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden z-20 max-h-[80vh] overflow-y-auto">
+                                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 z-10">
                                     <h3 class="font-semibold text-gray-800 dark:text-gray-200">الإشعارات</h3>
-                                    <button id="mark-all-read" class="text-primary text-sm hover:underline">تحديد الكل كمقروء</button>
+                                    <div class="flex items-center">
+                                        <button id="notifications-settings" class="text-gray-500 hover:text-primary ml-3">
+                                            <i class="fas fa-cog"></i>
+                                        </button>
+                                        <button id="mark-all-read" class="text-primary text-sm hover:underline">تحديد الكل كمقروء</button>
+                                    </div>
                                 </div>
                                 
-                                <div>
-                                    <!-- New notification -->
-                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20">
+                                <!-- Notification Filters -->
+                                <div class="p-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 sticky top-[60px] z-10">
+                                    <div class="category-tabs flex overflow-x-auto pb-1 space-x-2 space-x-reverse">
+                                        <button class="category-pill px-3 py-1 rounded-full text-xs font-medium bg-primary text-white active whitespace-nowrap" data-category="all">الكل</button>
+                                        <button class="category-pill px-3 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 whitespace-nowrap" data-category="appointment">المواعيد</button>
+                                        <button class="category-pill px-3 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 whitespace-nowrap" data-category="health">نصائح صحية</button>
+                                        <button class="category-pill px-3 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 whitespace-nowrap" data-category="medication">تذكير بالدواء</button>
+                                        <button class="category-pill px-3 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 whitespace-nowrap" data-category="payment">المدفوعات</button>
+                                        <button class="category-pill px-3 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 whitespace-nowrap" data-category="system">النظام</button>
+                                    </div>
+                                </div>
+                                
+                                <div id="notifications-container">
+                                    <!-- New notification - Appointment -->
+                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 notification-appear" data-category="appointment">
                                         <div class="flex">
                                             <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
                                                 <i class="fas fa-calendar-check text-primary"></i>
@@ -246,16 +349,57 @@
                                                     <span class="text-blue-600 dark:text-blue-400 text-xs font-bold bg-blue-100 dark:bg-blue-900 dark:bg-opacity-50 rounded-full px-2 py-1 ml-1">جديد</span>
                                                 </div>
                                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">لديك موعد غداً مع د. محمد أحمد في الساعة 10:30 صباحاً</p>
-                                                <div class="mt-1 flex justify-between">
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    <button class="notification-action px-3 py-1 bg-primary text-white text-xs rounded-full hover:bg-primary-dark">تأكيد الحضور</button>
+                                                    <button class="notification-action px-3 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded-full hover:bg-gray-300 dark:hover:bg-gray-500">إعادة جدولة</button>
+                                                </div>
+                                                <div class="mt-1 flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-500">منذ ساعة واحدة</span>
-                                                    <button class="text-primary text-xs hover:underline">عرض</button>
+                                                    <div class="flex items-center">
+                                                        <button class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-2" title="حذف الإشعار">
+                                                            <i class="fas fa-trash-alt text-xs"></i>
+                                                        </button>
+                                                        <button class="notification-option text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" title="خيارات">
+                                                            <i class="fas fa-ellipsis-v text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Payment notification - NEW -->
+                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 notification-appear" data-category="payment">
+                                        <div class="flex">
+                                            <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-check-circle text-green-500"></i>
+                                            </div>
+                                            <div class="flex-1 mr-3">
+                                                <div class="flex items-start justify-between">
+                                                    <h4 class="font-medium text-gray-800 dark:text-gray-200">تأكيد الدفع</h4>
+                                                    <span class="text-blue-600 dark:text-blue-400 text-xs font-bold bg-blue-100 dark:bg-blue-900 dark:bg-opacity-50 rounded-full px-2 py-1 ml-1">جديد</span>
+                                                </div>
+                                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">تم تأكيد دفع مبلغ 2500 دج للاستشارة الطبية عبر بريدي موب</p>
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    <button class="notification-action px-3 py-1 bg-primary text-white text-xs rounded-full hover:bg-primary-dark">عرض الإيصال</button>
+                                                </div>
+                                                <div class="mt-1 flex justify-between items-center">
+                                                    <span class="text-xs text-gray-500 dark:text-gray-500">منذ 3 ساعات</span>
+                                                    <div class="flex items-center">
+                                                        <button class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-2" title="حذف الإشعار">
+                                                            <i class="fas fa-trash-alt text-xs"></i>
+                                                        </button>
+                                                        <button class="notification-option text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" title="خيارات">
+                                                            <i class="fas fa-ellipsis-v text-xs"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     
                                     <!-- Health Tip notification -->
-                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700">
+                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700" data-category="health">
                                         <div class="flex">
                                             <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
                                                 <i class="fas fa-heartbeat text-secondary"></i>
@@ -263,16 +407,27 @@
                                             <div class="flex-1 mr-3">
                                                 <h4 class="font-medium text-gray-800 dark:text-gray-200">نصيحة صحية</h4>
                                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">تناول 8 أكواب من الماء يومياً يساعد على تحسين عملية الهضم والحفاظ على رطوبة الجسم</p>
-                                                <div class="mt-1 flex justify-between">
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    <button class="notification-action px-3 py-1 bg-primary text-white text-xs rounded-full hover:bg-primary-dark">معرفة المزيد</button>
+                                                    <button class="notification-action px-3 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded-full hover:bg-gray-300 dark:hover:bg-gray-500">ذكرني لاحقاً</button>
+                                                </div>
+                                                <div class="mt-1 flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-500">منذ 6 ساعات</span>
-                                                    <button class="text-primary text-xs hover:underline">عرض المزيد</button>
+                                                    <div class="flex items-center">
+                                                        <button class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-2" title="حذف الإشعار">
+                                                            <i class="fas fa-trash-alt text-xs"></i>
+                                                        </button>
+                                                        <button class="notification-option text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" title="خيارات">
+                                                            <i class="fas fa-ellipsis-v text-xs"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     
                                     <!-- Medication reminder notification -->
-                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700">
+                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700" data-category="medication">
                                         <div class="flex">
                                             <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center flex-shrink-0">
                                                 <i class="fas fa-pills text-red-500"></i>
@@ -280,16 +435,54 @@
                                             <div class="flex-1 mr-3">
                                                 <h4 class="font-medium text-gray-800 dark:text-gray-200">تذكير بالدواء</h4>
                                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">حان موعد تناول دواء الضغط</p>
-                                                <div class="mt-1 flex justify-between">
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    <button class="notification-action px-3 py-1 bg-primary text-white text-xs rounded-full hover:bg-primary-dark">تم</button>
+                                                    <button class="notification-action px-3 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded-full hover:bg-gray-300 dark:hover:bg-gray-500">تذكير بعد ساعة</button>
+                                                </div>
+                                                <div class="mt-1 flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-500">منذ 12 ساعة</span>
-                                                    <button class="text-primary text-xs hover:underline">تم</button>
+                                                    <div class="flex items-center">
+                                                        <button class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-2" title="حذف الإشعار">
+                                                            <i class="fas fa-trash-alt text-xs"></i>
+                                                        </button>
+                                                        <button class="notification-option text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" title="خيارات">
+                                                            <i class="fas fa-ellipsis-v text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- System notification - NEW -->
+                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700" data-category="system">
+                                        <div class="flex">
+                                            <div class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-bell text-yellow-600"></i>
+                                            </div>
+                                            <div class="flex-1 mr-3">
+                                                <h4 class="font-medium text-gray-800 dark:text-gray-200">تحديث النظام</h4>
+                                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">تم إضافة ميزات جديدة للتطبيق. اكتشف الآن!</p>
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    <button class="notification-action px-3 py-1 bg-primary text-white text-xs rounded-full hover:bg-primary-dark">استكشاف</button>
+                                                </div>
+                                                <div class="mt-1 flex justify-between items-center">
+                                                    <span class="text-xs text-gray-500 dark:text-gray-500">منذ يوم واحد</span>
+                                                    <div class="flex items-center">
+                                                        <button class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-2" title="حذف الإشعار">
+                                                            <i class="fas fa-trash-alt text-xs"></i>
+                                                        </button>
+                                                        <button class="notification-option text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" title="خيارات">
+                                                            <i class="fas fa-ellipsis-v text-xs"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     
                                     <!-- Vaccination reminder notification -->
-                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700">
+                                    <div class="notification-item p-4 border-b border-gray-200 dark:border-gray-700" data-category="health">
                                         <div class="flex">
                                             <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center flex-shrink-0">
                                                 <i class="fas fa-syringe text-purple-500"></i>
@@ -297,16 +490,34 @@
                                             <div class="flex-1 mr-3">
                                                 <h4 class="font-medium text-gray-800 dark:text-gray-200">تذكير بالتطعيم</h4>
                                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">موعد تطعيم الأنفلونزا الموسمية خلال أسبوع</p>
-                                                <div class="mt-1 flex justify-between">
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    <button class="notification-action px-3 py-1 bg-primary text-white text-xs rounded-full hover:bg-primary-dark">حجز موعد</button>
+                                                    <button class="notification-action px-3 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded-full hover:bg-gray-300 dark:hover:bg-gray-500">معلومات أكثر</button>
+                                                </div>
+                                                <div class="mt-1 flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-500">منذ يومين</span>
-                                                    <button class="text-primary text-xs hover:underline">حجز موعد</button>
+                                                    <div class="flex items-center">
+                                                        <button class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-2" title="حذف الإشعار">
+                                                            <i class="fas fa-trash-alt text-xs"></i>
+                                                        </button>
+                                                        <button class="notification-option text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" title="خيارات">
+                                                            <i class="fas fa-ellipsis-v text-xs"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <div class="p-3 text-center">
+                                <div id="empty-notifications" class="p-6 text-center hidden">
+                                    <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-bell-slash text-gray-400 dark:text-gray-500 text-xl"></i>
+                                    </div>
+                                    <p class="text-gray-600 dark:text-gray-400">لا توجد إشعارات جديدة</p>
+                                </div>
+                                
+                                <div class="p-3 text-center border-t border-gray-200 dark:border-gray-700">
                                     <button class="text-primary text-sm hover:underline">عرض جميع الإشعارات</button>
                                 </div>
                             </div>
@@ -339,6 +550,143 @@
                     </div>
                 </div>
             </header>
+            
+            <!-- Notification Settings Modal -->
+            <div id="notification-settings-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+                <div class="bg-black bg-opacity-50 absolute inset-0" id="notification-settings-backdrop"></div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 relative z-10 slide-in">
+                    <div class="p-5 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">إعدادات الإشعارات</h3>
+                            <button id="close-notification-settings" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-5">
+                        <div class="mb-5">
+                            <h4 class="font-medium text-gray-800 dark:text-gray-200 mb-3">طرق استلام الإشعارات</h4>
+                            
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-500 flex items-center justify-center ml-3">
+                                            <i class="fas fa-mobile-alt"></i>
+                                        </div>
+                                        <span class="text-gray-700 dark:text-gray-300">في التطبيق</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-500 flex items-center justify-center ml-3">
+                                            <i class="fas fa-envelope"></i>
+                                        </div>
+                                        <span class="text-gray-700 dark:text-gray-300">البريد الإلكتروني</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 text-green-500 flex items-center justify-center ml-3">
+                                            <i class="fas fa-sms"></i>
+                                        </div>
+                                        <span class="text-gray-700 dark:text-gray-300">رسائل نصية</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <h4 class="font-medium text-gray-800 dark:text-gray-200 mb-3">أنواع الإشعارات</h4>
+                            
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-500 flex items-center justify-center ml-3">
+                                            <i class="fas fa-calendar-check"></i>
+                                        </div>
+                                        <span class="text-gray-700 dark:text-gray-300">تذكير بالمواعيد</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900 text-red-500 flex items-center justify-center ml-3">
+                                            <i class="fas fa-pills"></i>
+                                        </div>
+                                        <span class="text-gray-700 dark:text-gray-300">تذكير بالأدوية</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 text-green-500 flex items-center justify-center ml-3">
+                                            <i class="fas fa-heartbeat"></i>
+                                        </div>
+                                        <span class="text-gray-700 dark:text-gray-300">نصائح صحية</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-600 flex items-center justify-center ml-3">
+                                            <i class="fas fa-credit-card"></i>
+                                        </div>
+                                        <span class="text-gray-700 dark:text-gray-300">المدفوعات</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 flex items-center justify-center ml-3">
+                                            <i class="fas fa-bell"></i>
+                                        </div>
+                                        <span class="text-gray-700 dark:text-gray-300">إشعارات النظام</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg mr-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition">إلغاء</button>
+                            <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition">حفظ التغييرات</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
             <!-- Main Content -->
             <main class="container mx-auto px-4 py-6">
@@ -415,7 +763,7 @@
                                     <h5 class="font-medium text-gray-800 dark:text-gray-200">استشارة طبية مع د. سارة أحمد</h5>
                                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">تم إجراء استشارة فيديو في 15 يوليو 2023</p>
                                     <div class="mt-2 flex gap-2">
-                                        <button class="text-sm text-primary hover:underline">عرض التفاصيل</button>
+                                        <button class="text-sm text-primary hover:underline" id="show-consultation-details">عرض التفاصيل</button>
                                         <button class="text-sm text-gray-600 dark:text-gray-400 hover:underline">حجز استشارة جديدة</button>
                                     </div>
                                 </div>
@@ -432,7 +780,7 @@
                                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">تمت الزيارة المنزلية في 10 يوليو 2023</p>
                                     <div class="mt-2 flex gap-2">
                                         <button class="text-sm text-primary hover:underline">عرض التفاصيل</button>
-                                        <button class="text-sm text-gray-600 dark:text-gray-400 hover:underline">تقييم الخدمة</button>
+                                        <button class="text-sm text-gray-600 dark:text-gray-400 hover:underline" id="show-rating-notification">تقييم الخدمة</button>
                                     </div>
                                 </div>
                             </div>
@@ -447,8 +795,8 @@
                                     <h5 class="font-medium text-gray-800 dark:text-gray-200">موعد في مختبر التحاليل الطبية</h5>
                                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">موعد قادم في 25 يوليو 2023 - 10:30 صباحاً</p>
                                     <div class="mt-2 flex gap-2">
-                                        <button class="text-sm text-primary hover:underline">عرض التفاصيل</button>
-                                        <button class="text-sm text-red-500 hover:underline">إلغاء الموعد</button>
+                                        <button class="text-sm text-primary hover:underline" id="show-payment-notification">عرض التفاصيل</button>
+                                        <button class="text-sm text-red-500 hover:underline" id="show-cancel-notification">إلغاء الموعد</button>
                                     </div>
                                 </div>
                             </div>
@@ -478,382 +826,6 @@
                     </a>
                 </div>
             </nav>
-        </div>
-        
-        <!-- Teleconsultation Modal -->
-        <div id="telehealth-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
-            <div class="bg-black bg-opacity-50 absolute inset-0" id="telehealth-modal-backdrop"></div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 relative z-10 slide-in">
-                <div class="p-5 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">طلب استشارة عن بعد</h3>
-                        <button id="close-telehealth-modal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="p-5">
-                    <div class="mb-4">
-                        <div class="flex gap-3 mb-4">
-                            <button class="flex-1 py-3 rounded-lg border-2 border-primary text-primary font-medium hover:bg-primary hover:text-white transition duration-200 flex items-center justify-center">
-                                <i class="fas fa-comment-alt mr-2"></i>
-                                <span>رسائل نصية</span>
-                            </button>
-                            <button class="flex-1 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200 flex items-center justify-center">
-                                <i class="fas fa-video mr-2"></i>
-                                <span>مكالمة فيديو</span>
-                            </button>
-                        </div>
-                        
-                        <label class="block text-gray-700 dark:text-gray-300 mb-2" for="specialty">التخصص</label>
-                        <select id="specialty" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base mb-4">
-                            <option value="">اختر التخصص</option>
-                            <option value="general">طب عام</option>
-                            <option value="cardiology">أمراض القلب</option>
-                            <option value="dermatology">الأمراض الجلدية</option>
-                            <option value="pediatrics">طب الأطفال</option>
-                            <option value="psychology">الطب النفسي</option>
-                        </select>
-                        
-                        <label class="block text-gray-700 dark:text-gray-300 mb-2" for="consultation-description">وصف الحالة</label>
-                        <textarea id="consultation-description" rows="4" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base mb-4" placeholder="اكتب وصفاً مختصراً للحالة..."></textarea>
-                        
-                        <div class="flex items-center mb-4">
-                            <input type="checkbox" id="attach-files" class="w-4 h-4 text-primary">
-                            <label for="attach-files" class="mr-2 text-gray-700 dark:text-gray-300">إرفاق ملفات طبية</label>
-                        </div>
-                    </div>
-                    
-                    <button id="submit-telehealth" class="w-full bg-primary hover:bg-opacity-90 text-white py-3 rounded-lg font-medium transition duration-300">إرسال الطلب</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Home Visit Modal -->
-        <div id="home-visit-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
-            <div class="bg-black bg-opacity-50 absolute inset-0" id="home-visit-modal-backdrop"></div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 relative z-10 slide-in">
-                <div class="p-5 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">طلب زيارة منزلية</h3>
-                        <button id="close-home-visit-modal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="p-5">
-                    <div class="mb-4">
-                        <label class="block text-gray-700 dark:text-gray-300 mb-2" for="service-type">نوع الخدمة</label>
-                        <select id="service-type" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base mb-4">
-                            <option value="">اختر نوع الخدمة</option>
-                            <option value="doctor">طبيب</option>
-                            <option value="nurse">ممرض</option>
-                            <option value="physiotherapist">علاج طبيعي</option>
-                            <option value="psychologist">أخصائي نفسي</option>
-                            <option value="speech">أرطوفوني</option>
-                            <option value="caregiver">مرافق صحي</option>
-                            <option value="vaccination">تطعيم منزلي</option>
-                            <option value="alternative">طب بديل</option>
-                        </select>
-                        
-                        <label class="block text-gray-700 dark:text-gray-300 mb-2" for="visit-address">العنوان</label>
-                        <input id="visit-address" type="text" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base mb-4" placeholder="أدخل العنوان بالتفصيل...">
-                        
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-300 mb-2" for="visit-date">التاريخ</label>
-                                <input id="visit-date" type="date" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-300 mb-2" for="visit-time">الوقت</label>
-                                <input id="visit-time" type="time" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base">
-                            </div>
-                        </div>
-                        
-                        <label class="block text-gray-700 dark:text-gray-300 mb-2" for="visit-notes">ملاحظات إضافية</label>
-                        <textarea id="visit-notes" rows="3" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base mb-4" placeholder="اكتب أي ملاحظات إضافية..."></textarea>
-                    </div>
-                    
-                    <div class="bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 p-4 rounded-lg mb-4">
-                        <p class="text-blue-800 dark:text-blue-200 text-sm"><i class="fas fa-info-circle mr-2"></i> سيتم الدفع نقداً عند تقديم الخدمة. يتم خصم عمولة 20% من سعر الخدمة تلقائياً.</p>
-                    </div>
-                    
-                    <button id="submit-home-visit" class="w-full bg-secondary hover:bg-opacity-90 text-white py-3 rounded-lg font-medium transition duration-300">إرسال الطلب</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Appointment Modal -->
-        <div id="appointment-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
-            <div class="bg-black bg-opacity-50 absolute inset-0" id="appointment-modal-backdrop"></div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 relative z-10 slide-in">
-                <div class="p-5 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">حجز موعد</h3>
-                        <button id="close-appointment-modal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="p-5">
-                    <div class="mb-4">
-                        <div class="flex gap-3 mb-4">
-                            <button id="clinic-type-btn" class="flex-1 py-3 rounded-lg border-2 border-primary text-primary font-medium hover:bg-primary hover:text-white transition duration-200 flex items-center justify-center">
-                                <i class="fas fa-stethoscope mr-2"></i>
-                                <span>عيادة</span>
-                            </button>
-                            <button id="lab-type-btn" class="flex-1 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200 flex items-center justify-center">
-                                <i class="fas fa-flask mr-2"></i>
-                                <span>مختبر</span>
-                            </button>
-                        </div>
-                        
-                        <label class="block text-gray-700 dark:text-gray-300 mb-2" for="appointment-specialty">التخصص</label>
-                        <select id="appointment-specialty" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base mb-4">
-                            <option value="">اختر التخصص</option>
-                            <option value="general">طب عام</option>
-                            <option value="cardiology">أمراض القلب</option>
-                            <option value="dermatology">الأمراض الجلدية</option>
-                            <option value="orthopedics">العظام</option>
-                            <option value="gynecology">النساء والتوليد</option>
-                            <option value="ent">أنف وأذن وحنجرة</option>
-                            <option value="ophthalmology">العيون</option>
-                        </select>
-                        
-                        <label class="block text-gray-700 dark:text-gray-300 mb-2" for="appointment-location">الموقع</label>
-                        <div class="flex mb-4">
-                            <input id="appointment-location" type="text" class="flex-1 px-4 py-3 rounded-r-none rounded-l-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base" placeholder="الولاية أو البلدية">
-                            <button class="px-4 py-3 rounded-l-none rounded-r-lg bg-primary text-white">
-                                <i class="fas fa-map-marker-alt"></i>
-                            </button>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-300 mb-2" for="appointment-date">التاريخ</label>
-                                <input id="appointment-date" type="date" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-300 mb-2" for="appointment-distance">المسافة</label>
-                                <select id="appointment-distance" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base">
-                                    <option value="5">أقرب من 5 كم</option>
-                                    <option value="10">أقرب من 10 كم</option>
-                                    <option value="20">أقرب من 20 كم</option>
-                                    <option value="all">الكل</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button id="search-appointments" class="w-full bg-accent hover:bg-opacity-90 text-white py-3 rounded-lg font-medium transition duration-300">بحث</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Provider Details Modal (Doctor/Clinic/Lab) -->
-        <div id="provider-details-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
-            <div class="bg-black bg-opacity-50 absolute inset-0" id="provider-details-modal-backdrop"></div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 relative z-10 slide-in overflow-hidden">
-                <div class="p-5 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">معلومات مقدم الخدمة</h3>
-                        <button id="close-provider-details-modal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="overflow-y-auto max-h-[70vh]">
-                    <div class="bg-gradient-to-r from-primary to-secondary text-white p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="w-20 h-20 bg-white rounded-full mr-4 flex items-center justify-center">
-                                <i class="fas fa-user-md text-primary text-3xl"></i>
-                            </div>
-                            <div>
-                                <h4 id="provider-name" class="text-xl font-bold">د. محمد أحمد</h4>
-                                <p id="provider-specialty" class="text-white text-opacity-90">أخصائي أمراض القلب</p>
-                                <div class="flex items-center mt-1">
-                                    <div class="flex">
-                                        <i class="fas fa-star text-yellow-300"></i>
-                                        <i class="fas fa-star text-yellow-300"></i>
-                                        <i class="fas fa-star text-yellow-300"></i>
-                                        <i class="fas fa-star text-yellow-300"></i>
-                                        <i class="fas fa-star-half-alt text-yellow-300"></i>
-                                    </div>
-                                    <span class="mr-1 text-white text-opacity-90">(4.5)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="p-6">
-                        <div class="mb-6">
-                            <h5 class="font-semibold text-lg mb-3 text-gray-800 dark:text-gray-200">معلومات الاتصال</h5>
-                            <div class="space-y-2">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-                                        <i class="fas fa-phone text-primary"></i>
-                                    </div>
-                                    <p class="mr-3 text-gray-700 dark:text-gray-300">+213 555 123 456</p>
-                                </div>
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
-                                        <i class="fas fa-map-marker-alt text-secondary"></i>
-                                    </div>
-                                    <p class="mr-3 text-gray-700 dark:text-gray-300" id="provider-address">شارع الاستقلال، العاصمة</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-6">
-                            <h5 class="font-semibold text-lg mb-3 text-gray-800 dark:text-gray-200">ساعات العمل</h5>
-                            <div class="space-y-2 text-gray-700 dark:text-gray-300">
-                                <div class="flex justify-between">
-                                    <span>السبت - الخميس:</span>
-                                    <span>09:00 - 17:00</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>الجمعة:</span>
-                                    <span>مغلق</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-6">
-                            <h5 class="font-semibold text-lg mb-3 text-gray-800 dark:text-gray-200">نبذة</h5>
-                            <p class="text-gray-700 dark:text-gray-300">
-                                طبيب متخصص بخبرة تزيد عن 15 عاماً في مجال أمراض القلب. حاصل على شهادة الاختصاص من جامعة الجزائر الطبية وزمالة في أمراض القلب التداخلية.
-                            </p>
-                        </div>
-                        
-                        <div class="mb-6">
-                            <h5 class="font-semibold text-lg mb-3 text-gray-800 dark:text-gray-200">الخدمات</h5>
-                            <div class="flex flex-wrap gap-2">
-                                <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">تخطيط القلب</span>
-                                <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">إيكو القلب</span>
-                                <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">فحص الضغط</span>
-                                <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">استشارات قلبية</span>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-6">
-                            <h5 class="font-semibold text-lg mb-3 text-gray-800 dark:text-gray-200">تقييمات المرضى</h5>
-                            <div class="space-y-4">
-                                <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
-                                    <div class="flex justify-between mb-1">
-                                        <div class="flex items-center">
-                                            <div class="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 mr-2"></div>
-                                            <span class="font-medium text-gray-800 dark:text-gray-200">أحمد محمود</span>
-                                        </div>
-                                        <div class="flex">
-                                            <i class="fas fa-star text-yellow-400"></i>
-                                            <i class="fas fa-star text-yellow-400"></i>
-                                            <i class="fas fa-star text-yellow-400"></i>
-                                            <i class="fas fa-star text-yellow-400"></i>
-                                            <i class="fas fa-star text-yellow-400"></i>
-                                        </div>
-                                    </div>
-                                    <p class="text-gray-600 dark:text-gray-400">طبيب ممتاز، شرح لي حالتي بالتفصيل واهتم كثيراً بسماع شكواي. أنصح به بشدة!</p>
-                                </div>
-                                <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
-                                    <div class="flex justify-between mb-1">
-                                        <div class="flex items-center">
-                                            <div class="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 mr-2"></div>
-                                            <span class="font-medium text-gray-800 dark:text-gray-200">سمية خالد</span>
-                                        </div>
-                                        <div class="flex">
-                                            <i class="fas fa-star text-yellow-400"></i>
-                                            <i class="fas fa-star text-yellow-400"></i>
-                                            <i class="fas fa-star text-yellow-400"></i>
-                                            <i class="fas fa-star text-yellow-400"></i>
-                                            <i class="fas fa-star-half-alt text-yellow-400"></i>
-                                        </div>
-                                    </div>
-                                    <p class="text-gray-600 dark:text-gray-400">عيادة منظمة جداً ووقت انتظار قصير. الدكتور محترف ولطيف.</p>
-                                </div>
-                            </div>
-                            <button class="text-primary mt-2 flex items-center">
-                                <span>عرض جميع التقييمات</span>
-                                <i class="fas fa-chevron-left mr-1 text-xs"></i>
-                            </button>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4 mt-6">
-                            <button class="py-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200 flex items-center justify-center">
-                                <i class="fas fa-phone-alt ml-2"></i>
-                                اتصال
-                            </button>
-                            <button id="complete-booking-btn" class="py-3 rounded-lg bg-primary hover:bg-opacity-90 text-white font-medium transition duration-200 flex items-center justify-center">
-                                <i class="fas fa-calendar-check ml-2"></i>
-                                حجز موعد
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Final Booking Modal -->
-        <div id="final-booking-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
-            <div class="bg-black bg-opacity-50 absolute inset-0" id="final-booking-modal-backdrop"></div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 relative z-10 slide-in">
-                <div class="p-5 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">تأكيد الحجز</h3>
-                        <button id="close-final-booking-modal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="p-5">
-                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-                        <div class="flex items-start">
-                            <div class="w-12 h-12 bg-primary bg-opacity-10 text-primary rounded-full flex items-center justify-center mr-3">
-                                <i class="fas fa-user-md text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-gray-800 dark:text-gray-200">د. محمد أحمد</h4>
-                                <p class="text-gray-600 dark:text-gray-400 text-sm">أخصائي أمراض القلب</p>
-                                <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                                    <p><i class="fas fa-map-marker-alt ml-1"></i> شارع الاستقلال، العاصمة</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-3">اختر موعداً</h5>
-                        <div class="grid grid-cols-2 gap-3 mb-4">
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-300 mb-2" for="booking-date">التاريخ</label>
-                                <input id="booking-date" type="date" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 dark:text-gray-300 mb-2" for="booking-time">الوقت</label>
-                                <select id="booking-time" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base">
-                                    <option value="">اختر الوقت</option>
-                                    <option value="09:00">09:00 صباحاً</option>
-                                    <option value="10:00">10:00 صباحاً</option>
-                                    <option value="11:00">11:00 صباحاً</option>
-                                    <option value="12:00">12:00 ظهراً</option>
-                                    <option value="13:00">01:00 مساءً</option>
-                                    <option value="14:00">02:00 مساءً</option>
-                                    <option value="15:00">03:00 مساءً</option>
-                                    <option value="16:00">04:00 مساءً</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <label class="block text-gray-700 dark:text-gray-300 mb-2" for="booking-notes">ملاحظات (اختياري)</label>
-                        <textarea id="booking-notes" rows="3" class="w-full px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary text-base mb-4" placeholder="أي ملاحظات إضافية..."></textarea>
-                    </div>
-                    
-                    <div class="bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 p-4 rounded-lg mb-4">
-                        <p class="text-blue-800 dark:text-blue-200 text-sm"><i class="fas fa-info-circle ml-2"></i> سيتم إرسال تأكيد الحجز عبر البريد الإلكتروني ورسالة نصية. كما سيتم تذكيرك قبل الموعد بيوم واحد.</p>
-                    </div>
-                    
-                    <button id="confirm-booking-btn" class="w-full bg-primary hover:bg-opacity-90 text-white py-3 rounded-lg font-medium transition duration-300">تأكيد الحجز</button>
-                </div>
-            </div>
         </div>
         
         <!-- Loading Overlay -->
@@ -906,6 +878,9 @@
                 authScreen.classList.add('hidden');
                 dashboardScreen.classList.remove('hidden');
                 dashboardScreen.classList.add('fade-in');
+                
+                // Show welcome notification
+                showToast("مرحباً بك", "أهلاً بك في تطبيق KF Santé. نتمنى لك يوماً صحياً سعيداً.", "fas fa-smile");
             }, 1500);
         });
 
@@ -918,6 +893,9 @@
                 authScreen.classList.add('hidden');
                 dashboardScreen.classList.remove('hidden');
                 dashboardScreen.classList.add('fade-in');
+                
+                // Show registration success notification
+                showToast("تم إنشاء الحساب بنجاح", "مرحباً بك في تطبيق KF Santé الصحي المتكامل.", "fas fa-check-circle");
             }, 1500);
         });
 
@@ -958,13 +936,15 @@
             });
         }
         
-        // Notifications panel
+        // Notifications functionality
         const notificationsButton = document.getElementById('notifications-button');
         const notificationsPanel = document.getElementById('notifications-panel');
         const markAllReadButton = document.getElementById('mark-all-read');
+        const notificationsBadge = document.getElementById('notification-badge');
         
         notificationsButton.addEventListener('click', () => {
             notificationsPanel.classList.toggle('hidden');
+            
             // Remove notification dot when opened
             const notificationDot = notificationsButton.querySelector('.notification-dot');
             if (notificationDot) {
@@ -972,6 +952,47 @@
             }
         });
         
+        // Notification category filter
+        const categoryButtons = document.querySelectorAll('.category-pill');
+        const notificationItems = document.querySelectorAll('.notification-item');
+        const emptyNotifications = document.getElementById('empty-notifications');
+        
+        categoryButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons
+                categoryButtons.forEach(btn => {
+                    btn.classList.remove('bg-primary', 'text-white');
+                    btn.classList.add('bg-gray-200', 'dark:bg-gray-600', 'text-gray-700', 'dark:text-gray-300');
+                });
+                
+                // Add active class to clicked button
+                button.classList.remove('bg-gray-200', 'dark:bg-gray-600', 'text-gray-700', 'dark:text-gray-300');
+                button.classList.add('bg-primary', 'text-white');
+                
+                const category = button.getAttribute('data-category');
+                
+                // Show/hide notifications based on category
+                let visibleCount = 0;
+                
+                notificationItems.forEach(item => {
+                    if (category === 'all' || item.getAttribute('data-category') === category) {
+                        item.classList.remove('hidden');
+                        visibleCount++;
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+                
+                // Show empty state if no notifications in category
+                if (visibleCount === 0) {
+                    emptyNotifications.classList.remove('hidden');
+                } else {
+                    emptyNotifications.classList.add('hidden');
+                }
+            });
+        });
+        
+        // Mark all notifications as read
         markAllReadButton.addEventListener('click', () => {
             // Mark all notifications as read by removing the blue background
             const newNotifications = document.querySelectorAll('.notification-item.bg-blue-50, .notification-item.dark\\:bg-blue-900');
@@ -984,10 +1005,316 @@
             });
             
             // Update notification counter
-            const notificationCounter = notificationsButton.querySelector('span:not(.notification-dot)');
-            notificationCounter.textContent = '0';
-            notificationCounter.classList.add('hidden');
+            notificationsBadge.textContent = '0';
+            notificationsBadge.classList.add('hidden');
+            
+            // Show confirmation toast
+            showToast("تم تحديد الكل كمقروء", "تم تحديد جميع الإشعارات كمقروءة", "fas fa-check");
         });
+        
+        // Delete notification functionality
+        const deleteButtons = document.querySelectorAll('.notification-item button[title="حذف الإشعار"]');
+        
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const notificationItem = e.target.closest('.notification-item');
+                
+                // Add fade out animation
+                notificationItem.style.opacity = '0';
+                notificationItem.style.height = notificationItem.offsetHeight + 'px';
+                notificationItem.style.transition = 'opacity 0.3s ease, height 0.3s ease 0.3s, padding 0.3s ease 0.3s, margin 0.3s ease 0.3s';
+                
+                setTimeout(() => {
+                    notificationItem.style.height = '0';
+                    notificationItem.style.padding = '0';
+                    notificationItem.style.margin = '0';
+                    notificationItem.style.borderWidth = '0';
+                    
+                    setTimeout(() => {
+                        notificationItem.remove();
+                        
+                        // Update notification counter
+                        const visibleNotifications = document.querySelectorAll('.notification-item:not(.hidden)').length;
+                        if (visibleNotifications === 0) {
+                            notificationsBadge.classList.add('hidden');
+                            emptyNotifications.classList.remove('hidden');
+                        } else {
+                            notificationsBadge.textContent = visibleNotifications;
+                        }
+                        
+                        // Show confirmation toast
+                        showToast("تم حذف الإشعار", "تم حذف الإشعار بنجاح", "fas fa-trash-alt");
+                    }, 300);
+                }, 300);
+            });
+        });
+        
+        // Notification action buttons
+        const notificationActions = document.querySelectorAll('.notification-action');
+        
+        notificationActions.forEach(action => {
+            action.addEventListener('click', () => {
+                const notificationItem = action.closest('.notification-item');
+                const actionText = action.textContent.trim();
+                
+                // Show action feedback
+                showToast("تم تنفيذ الإجراء", `تم ${actionText} بنجاح`, "fas fa-check-circle");
+                
+                // If action is "تم" for medication, remove notification
+                if (actionText === "تم" && notificationItem.getAttribute('data-category') === 'medication') {
+                    notificationItem.classList.add('bg-green-50', 'dark:bg-green-900', 'dark:bg-opacity-10');
+                    setTimeout(() => {
+                        notificationItem.style.opacity = '0';
+                        notificationItem.style.height = notificationItem.offsetHeight + 'px';
+                        notificationItem.style.transition = 'opacity 0.3s ease, height 0.3s ease 0.3s, padding 0.3s ease 0.3s, margin 0.3s ease 0.3s';
+                        
+                        setTimeout(() => {
+                            notificationItem.style.height = '0';
+                            notificationItem.style.padding = '0';
+                            notificationItem.style.margin = '0';
+                            notificationItem.style.borderWidth = '0';
+                            
+                            setTimeout(() => {
+                                notificationItem.remove();
+                                
+                                // Update notification counter
+                                const visibleNotifications = document.querySelectorAll('.notification-item:not(.hidden)').length;
+                                if (visibleNotifications === 0) {
+                                    notificationsBadge.classList.add('hidden');
+                                    emptyNotifications.classList.remove('hidden');
+                                } else {
+                                    notificationsBadge.textContent = visibleNotifications;
+                                }
+                            }, 300);
+                        }, 300);
+                    }, 1000);
+                }
+            });
+        });
+        
+        // Notification Settings Modal
+        const notificationsSettings = document.getElementById('notifications-settings');
+        const notificationSettingsModal = document.getElementById('notification-settings-modal');
+        const closeNotificationSettings = document.getElementById('close-notification-settings');
+        const notificationSettingsBackdrop = document.getElementById('notification-settings-backdrop');
+        
+        notificationsSettings.addEventListener('click', () => {
+            notificationSettingsModal.classList.remove('hidden');
+        });
+        
+        closeNotificationSettings.addEventListener('click', () => {
+            notificationSettingsModal.classList.add('hidden');
+        });
+        
+        notificationSettingsBackdrop.addEventListener('click', () => {
+            notificationSettingsModal.classList.add('hidden');
+        });
+        
+        // Toast notification system
+        function showToast(title, message, icon) {
+            const toast = document.getElementById('notification-toast');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMessage = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+            
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+            toastIcon.className = icon;
+            
+            toast.classList.remove('hidden');
+            
+            // Remove any existing animation classes
+            toast.style.animation = 'none';
+            toast.offsetHeight; // Force reflow
+            toast.style.animation = 'toastAppear 0.3s ease-out forwards, toastDisappear 0.3s ease-in forwards 5s';
+            
+            // Add click handler to close button
+            const closeButtons = toast.querySelectorAll('.close-toast');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    toast.classList.add('hidden');
+                });
+            });
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 5300);
+        }
+        
+        // Demo notification actions for testing
+        document.getElementById('show-consultation-details').addEventListener('click', () => {
+            showToast("تفاصيل الاستشارة", "تم عرض تفاصيل الاستشارة السابقة مع د. سارة أحمد", "fas fa-info-circle");
+        });
+        
+        document.getElementById('show-rating-notification').addEventListener('click', () => {
+            // Add new notification
+            addNotification({
+                category: 'appointment',
+                icon: 'fas fa-star',
+                iconClass: 'text-yellow-500',
+                bgClass: 'bg-yellow-100 dark:bg-yellow-900',
+                title: 'تقييم الخدمة',
+                content: 'شكراً لتقييمك لخدمة الزيارة المنزلية من د. محمد خالد بـ 4.5/5',
+                time: 'الآن',
+                actions: [
+                    { text: 'إضافة تعليق', class: 'bg-primary text-white' }
+                ],
+                isNew: true
+            });
+        });
+        
+        document.getElementById('show-payment-notification').addEventListener('click', () => {
+            // Add new notification
+            addNotification({
+                category: 'payment',
+                icon: 'fas fa-credit-card',
+                iconClass: 'text-green-600',
+                bgClass: 'bg-green-100 dark:bg-green-900',
+                title: 'تذكير بالدفع',
+                content: 'تذكير بدفع 1500 دج لموعدك في مختبر التحاليل الطبية غداً',
+                time: 'الآن',
+                actions: [
+                    { text: 'دفع الآن', class: 'bg-primary text-white' },
+                    { text: 'التذكير لاحقاً', class: 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300' }
+                ],
+                isNew: true
+            });
+        });
+        
+        document.getElementById('show-cancel-notification').addEventListener('click', () => {
+            // Add new notification
+            addNotification({
+                category: 'appointment',
+                icon: 'fas fa-calendar-times',
+                iconClass: 'text-red-500',
+                bgClass: 'bg-red-100 dark:bg-red-900',
+                title: 'تم إلغاء الموعد',
+                content: 'تم إلغاء موعدك في مختبر التحاليل الطبية بنجاح',
+                time: 'الآن',
+                actions: [
+                    { text: 'حجز موعد جديد', class: 'bg-primary text-white' }
+                ],
+                isNew: true
+            });
+        });
+        
+        // Function to add new notification
+        function addNotification(notificationData) {
+            const notificationsContainer = document.getElementById('notifications-container');
+            
+            // Create notification element
+            const notificationElement = document.createElement('div');
+            notificationElement.className = `notification-item p-4 border-b border-gray-200 dark:border-gray-700 notification-appear ${notificationData.isNew ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20' : ''}`;
+            notificationElement.setAttribute('data-category', notificationData.category);
+            
+            // Create notification content
+            notificationElement.innerHTML = `
+                <div class="flex">
+                    <div class="w-10 h-10 rounded-full ${notificationData.bgClass} flex items-center justify-center flex-shrink-0">
+                        <i class="${notificationData.icon} ${notificationData.iconClass}"></i>
+                    </div>
+                    <div class="flex-1 mr-3">
+                        <div class="flex items-start justify-between">
+                            <h4 class="font-medium text-gray-800 dark:text-gray-200">${notificationData.title}</h4>
+                            ${notificationData.isNew ? '<span class="text-blue-600 dark:text-blue-400 text-xs font-bold bg-blue-100 dark:bg-blue-900 dark:bg-opacity-50 rounded-full px-2 py-1 ml-1">جديد</span>' : ''}
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">${notificationData.content}</p>
+                        ${notificationData.actions ? `
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                ${notificationData.actions.map(action => `
+                                    <button class="notification-action px-3 py-1 ${action.class} text-xs rounded-full hover:bg-opacity-90 transition">${action.text}</button>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        <div class="mt-1 flex justify-between items-center">
+                            <span class="text-xs text-gray-500 dark:text-gray-500">${notificationData.time}</span>
+                            <div class="flex items-center">
+                                <button class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-2" title="حذف الإشعار">
+                                    <i class="fas fa-trash-alt text-xs"></i>
+                                </button>
+                                <button class="notification-option text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" title="خيارات">
+                                    <i class="fas fa-ellipsis-v text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Insert at beginning of notifications container
+            notificationsContainer.insertBefore(notificationElement, notificationsContainer.firstChild);
+            
+            // Update notification counter
+            const count = parseInt(notificationsBadge.textContent) + 1;
+            notificationsBadge.textContent = count;
+            notificationsBadge.classList.remove('hidden');
+            
+            // Add pulse animation to badge
+            notificationsBadge.classList.remove('shake');
+            void notificationsBadge.offsetWidth; // Force reflow
+            notificationsBadge.classList.add('shake');
+            
+            // Show notification dot
+            const notificationDot = notificationsButton.querySelector('.notification-dot');
+            if (notificationDot) {
+                notificationDot.style.display = 'block';
+            }
+            
+            // Add delete functionality to new notification
+            const deleteButton = notificationElement.querySelector('button[title="حذف الإشعار"]');
+            deleteButton.addEventListener('click', () => {
+                // Add fade out animation
+                notificationElement.style.opacity = '0';
+                notificationElement.style.height = notificationElement.offsetHeight + 'px';
+                notificationElement.style.transition = 'opacity 0.3s ease, height 0.3s ease 0.3s, padding 0.3s ease 0.3s, margin 0.3s ease 0.3s';
+                
+                setTimeout(() => {
+                    notificationElement.style.height = '0';
+                    notificationElement.style.padding = '0';
+                    notificationElement.style.margin = '0';
+                    notificationElement.style.borderWidth = '0';
+                    
+                    setTimeout(() => {
+                        notificationElement.remove();
+                        
+                        // Update notification counter
+                        const visibleNotifications = document.querySelectorAll('.notification-item:not(.hidden)').length;
+                        if (visibleNotifications === 0) {
+                            notificationsBadge.classList.add('hidden');
+                            emptyNotifications.classList.remove('hidden');
+                        } else {
+                            notificationsBadge.textContent = visibleNotifications;
+                        }
+                        
+                        // Show confirmation toast
+                        showToast("تم حذف الإشعار", "تم حذف الإشعار بنجاح", "fas fa-trash-alt");
+                    }, 300);
+                }, 300);
+            });
+            
+            // Add action buttons functionality
+            const actionButtons = notificationElement.querySelectorAll('.notification-action');
+            actionButtons.forEach(action => {
+                action.addEventListener('click', () => {
+                    const actionText = action.textContent.trim();
+                    
+                    // Show action feedback
+                    showToast("تم تنفيذ الإجراء", `تم ${actionText} بنجاح`, "fas fa-check-circle");
+                });
+            });
+            
+            // Show toast notification for new notification
+            showToast(notificationData.title, notificationData.content, notificationData.icon);
+            
+            // Make notifications panel visible
+            if (notificationsPanel.classList.contains('hidden')) {
+                notificationsPanel.classList.remove('hidden');
+            }
+            
+            // Make sure empty notifications is hidden
+            emptyNotifications.classList.add('hidden');
+        }
         
         // Close dropdowns when clicking outside
         document.addEventListener('click', (e) => {
@@ -999,196 +1326,9 @@
                 langDropdown.classList.add('hidden');
             }
             
-            if (!notificationsButton.contains(e.target) && !notificationsPanel.contains(e.target)) {
+            if (!notificationsButton.contains(e.target) && !notificationsPanel.contains(e.target) && !e.target.closest('#notification-settings-modal')) {
                 notificationsPanel.classList.add('hidden');
             }
-        });
-
-        // Modal functionality
-        const telehealthButton = document.getElementById('telehealth-button');
-        const telehealthModal = document.getElementById('telehealth-modal');
-        const closeTelehealthModal = document.getElementById('close-telehealth-modal');
-        const telehealthModalBackdrop = document.getElementById('telehealth-modal-backdrop');
-        
-        telehealthButton.addEventListener('click', () => {
-            telehealthModal.classList.remove('hidden');
-        });
-        
-        closeTelehealthModal.addEventListener('click', () => {
-            telehealthModal.classList.add('hidden');
-        });
-        
-        telehealthModalBackdrop.addEventListener('click', () => {
-            telehealthModal.classList.add('hidden');
-        });
-        
-        // Home Visit Modal
-        const homeVisitButton = document.getElementById('home-visit-button');
-        const homeVisitModal = document.getElementById('home-visit-modal');
-        const closeHomeVisitModal = document.getElementById('close-home-visit-modal');
-        const homeVisitModalBackdrop = document.getElementById('home-visit-modal-backdrop');
-        
-        homeVisitButton.addEventListener('click', () => {
-            homeVisitModal.classList.remove('hidden');
-        });
-        
-        closeHomeVisitModal.addEventListener('click', () => {
-            homeVisitModal.classList.add('hidden');
-        });
-        
-        homeVisitModalBackdrop.addEventListener('click', () => {
-            homeVisitModal.classList.add('hidden');
-        });
-        
-        // Appointment Modal
-        const appointmentButton = document.getElementById('appointment-button');
-        const appointmentModal = document.getElementById('appointment-modal');
-        const closeAppointmentModal = document.getElementById('close-appointment-modal');
-        const appointmentModalBackdrop = document.getElementById('appointment-modal-backdrop');
-        
-        appointmentButton.addEventListener('click', () => {
-            appointmentModal.classList.remove('hidden');
-        });
-        
-        closeAppointmentModal.addEventListener('click', () => {
-            appointmentModal.classList.add('hidden');
-        });
-        
-        appointmentModalBackdrop.addEventListener('click', () => {
-            appointmentModal.classList.add('hidden');
-        });
-        
-        // Provider Details Modal
-        const providerDetailsModal = document.getElementById('provider-details-modal');
-        const closeProviderDetailsModal = document.getElementById('close-provider-details-modal');
-        const providerDetailsModalBackdrop = document.getElementById('provider-details-modal-backdrop');
-        const completeBookingBtn = document.getElementById('complete-booking-btn');
-        
-        closeProviderDetailsModal.addEventListener('click', () => {
-            providerDetailsModal.classList.add('hidden');
-        });
-        
-        providerDetailsModalBackdrop.addEventListener('click', () => {
-            providerDetailsModal.classList.add('hidden');
-        });
-        
-        // Final Booking Modal
-        const finalBookingModal = document.getElementById('final-booking-modal');
-        const closeFinalBookingModal = document.getElementById('close-final-booking-modal');
-        const finalBookingModalBackdrop = document.getElementById('final-booking-modal-backdrop');
-        const confirmBookingBtn = document.getElementById('confirm-booking-btn');
-        
-        completeBookingBtn.addEventListener('click', () => {
-            providerDetailsModal.classList.add('hidden');
-            finalBookingModal.classList.remove('hidden');
-        });
-        
-        closeFinalBookingModal.addEventListener('click', () => {
-            finalBookingModal.classList.add('hidden');
-        });
-        
-        finalBookingModalBackdrop.addEventListener('click', () => {
-            finalBookingModal.classList.add('hidden');
-        });
-        
-        // Submit buttons for modals with loading demonstration
-        const submitTelehealth = document.getElementById('submit-telehealth');
-        const submitHomeVisit = document.getElementById('submit-home-visit');
-        const searchAppointments = document.getElementById('search-appointments');
-        
-        submitTelehealth.addEventListener('click', () => {
-            telehealthModal.classList.add('hidden');
-            loadingOverlay.classList.remove('hidden');
-            
-            // Simulate loading
-            setTimeout(() => {
-                loadingOverlay.classList.add('hidden');
-            }, 2000);
-        });
-        
-        submitHomeVisit.addEventListener('click', () => {
-            homeVisitModal.classList.add('hidden');
-            loadingOverlay.classList.remove('hidden');
-            
-            // Simulate loading
-            setTimeout(() => {
-                loadingOverlay.classList.add('hidden');
-            }, 2000);
-        });
-        
-        searchAppointments.addEventListener('click', () => {
-            appointmentModal.classList.add('hidden');
-            loadingOverlay.classList.remove('hidden');
-            
-            // Simulate loading and show provider details modal with search results
-            setTimeout(() => {
-                loadingOverlay.classList.add('hidden');
-                providerDetailsModal.classList.remove('hidden');
-            }, 2000);
-        });
-        
-        confirmBookingBtn.addEventListener('click', () => {
-            finalBookingModal.classList.add('hidden');
-            loadingOverlay.classList.remove('hidden');
-            
-            // Simulate loading
-            setTimeout(() => {
-                loadingOverlay.classList.add('hidden');
-                // Show notification about successful booking
-                const notificationCounter = notificationsButton.querySelector('span:not(.notification-dot)');
-                notificationCounter.textContent = parseInt(notificationCounter.textContent) + 1;
-                notificationCounter.classList.remove('hidden');
-                
-                // Add pulse notification dot again
-                const notificationDot = notificationsButton.querySelector('.notification-dot');
-                if (notificationDot) {
-                    notificationDot.style.display = 'block';
-                }
-            }, 2000);
-        });
-        
-        // Toggle between clinic and lab
-        const clinicTypeBtn = document.getElementById('clinic-type-btn');
-        const labTypeBtn = document.getElementById('lab-type-btn');
-        
-        clinicTypeBtn.addEventListener('click', () => {
-            clinicTypeBtn.classList.add('border-primary', 'text-primary');
-            clinicTypeBtn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-600', 'dark:text-gray-300');
-            labTypeBtn.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-600', 'dark:text-gray-300');
-            labTypeBtn.classList.remove('border-primary', 'text-primary');
-            
-            // Update specialty options for clinic
-            const specialty = document.getElementById('appointment-specialty');
-            specialty.innerHTML = `
-                <option value="">اختر التخصص</option>
-                <option value="general">طب عام</option>
-                <option value="cardiology">أمراض القلب</option>
-                <option value="dermatology">الأمراض الجلدية</option>
-                <option value="orthopedics">العظام</option>
-                <option value="gynecology">النساء والتوليد</option>
-                <option value="ent">أنف وأذن وحنجرة</option>
-                <option value="ophthalmology">العيون</option>
-            `;
-        });
-        
-        labTypeBtn.addEventListener('click', () => {
-            labTypeBtn.classList.add('border-primary', 'text-primary');
-            labTypeBtn.classList.remove('border-gray-300', 'dark:border-gray-600', 'text-gray-600', 'dark:text-gray-300');
-            clinicTypeBtn.classList.add('border-gray-300', 'dark:border-gray-600', 'text-gray-600', 'dark:text-gray-300');
-            clinicTypeBtn.classList.remove('border-primary', 'text-primary');
-            
-            // Update specialty options for laboratory
-            const specialty = document.getElementById('appointment-specialty');
-            specialty.innerHTML = `
-                <option value="">اختر نوع التحليل</option>
-                <option value="blood">تحاليل الدم</option>
-                <option value="urine">تحاليل البول</option>
-                <option value="covid">فحص كوفيد-19</option>
-                <option value="hormone">تحاليل الهرمونات</option>
-                <option value="allergy">فحوصات الحساسية</option>
-                <option value="genetic">فحوصات وراثية</option>
-                <option value="imaging">تصوير طبي</option>
-            `;
         });
     </script>
 </body>
